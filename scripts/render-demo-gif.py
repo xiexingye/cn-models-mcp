@@ -168,21 +168,39 @@ def main():
     add(render(visible), 2500)
 
     OUT.parent.mkdir(parents=True, exist_ok=True)
-    frames[0].save(
-        OUT,
-        save_all=True,
-        append_images=frames[1:],
-        duration=delays,
-        loop=0,
-        optimize=True,
-        disposal=2,
-    )
+
+    # 用自带的最小 GIF 编码器写文件。
+    # 为什么不用 Pillow 的 save(save_all=True)：它**不支持逐帧延时** —— 实测
+    # duration=[...] 与逐帧 frame.info['duration'] 都会把同一个值套到所有帧上，
+    # 12 秒的动画被写成 137 秒、看起来像卡住/加载不出来。GIF 的 Graphic Control
+    # Extension 本身完全支持逐帧延时，所以这里直接按规范写字节流。
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from gif_encoder import write_gif
+
+    total_s = write_gif(OUT, frames, delays, loop=0)
+
+    # 写完自查：逐帧 seek 读回延时（不要用 ImageSequence.Iterator，它复用对象，
+    # .info 会被末帧覆盖，导致误判为"全部帧延时相同"）
+    with Image.open(OUT) as check:
+        got = []
+        for i in range(check.n_frames):
+            check.seek(i)
+            got.append(check.info.get("duration"))
+        n_frames_written = check.n_frames
+
+    ok_delay = got == delays
     size_kb = OUT.stat().st_size / 1024
-    total_s = sum(delays) / 1000
-    print(f"  帧数: {len(frames)}")
+    print(f"  帧数: {len(frames)}（写回 {n_frames_written}）")
     print(f"  时长: {total_s:.1f} 秒")
+    print(f"  延时校验: {'[OK] 与设计一致' if ok_delay else '[FAIL] ' + str(got[:8])}")
     print(f"  尺寸: {W}x{H}")
     print(f"  [OK] 已写出 {OUT} ({size_kb:.0f} KB)")
+
+    if not ok_delay:
+        return 2
+    if total_s > 30:
+        print(f"  [警告] 总时长 {total_s:.0f} 秒过长，检查延时")
+        return 2
     return 0
 
 
