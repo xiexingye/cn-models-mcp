@@ -171,7 +171,7 @@ node src/doctor.mjs
 {
   "context_servers": {
     "cn-models": {
-      "command": { "path": "npx", "args": ["-y", "cn-models-mcp"] },
+      "command": { "path": "npx", "args": ["-y", "github:xiexingye/cn-models-mcp"] },
       "settings": { "DEEPSEEK_API_KEY": "sk-..." }
     }
   }
