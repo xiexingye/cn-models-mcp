@@ -13,10 +13,32 @@
  */
 
 import { execFileSync } from 'node:child_process';
+import { existsSync } from 'node:fs';
+import path from 'node:path';
 
 const REPO = process.argv[2] ?? 'xiexingye/cn-models-mcp';
 const API = 'https://api.github.com';
-const GCM = 'C:\\Program Files\\Git\\mingw64\\bin\\git-credential-manager.exe';
+
+/**
+ * 定位 git-credential-manager：优先用环境变量 GCM_PATH，其次按 git 自身的安装位置推导，
+ * 最后退回 PATH 上的 `git-credential-manager`。
+ * 刻意不写死任何机器路径，避免把本机安装布局带进公开仓库。
+ */
+function resolveGcm() {
+  if (process.env.GCM_PATH) return process.env.GCM_PATH;
+  try {
+    const execPath = execFileSync('git', ['--exec-path'], { encoding: 'utf8' }).trim();
+    const parts = execPath.split(/[\\/]+/).filter(Boolean);
+    const i = parts.lastIndexOf('mingw64');
+    if (i !== -1) {
+      const candidate = path.join(parts.slice(0, i + 1).join(path.sep), 'bin', 'git-credential-manager.exe');
+      if (existsSync(candidate)) return candidate;
+    }
+  } catch { /* git 不可用，或不是 Git for Windows 的目录布局 */ }
+  return 'git-credential-manager';
+}
+
+const GCM = resolveGcm();
 
 function git(...args) {
   return execFileSync('git', args, { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }).trim();

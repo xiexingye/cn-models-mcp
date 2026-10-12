@@ -110,7 +110,7 @@ README 里的快速开始用的是 `npx -y cn-models-mcp`，发布到 npm 后即
 
 | 坑 | 现象 | 解法 |
 | --- | --- | --- |
-| npm 默认缓存目录 | `EPERM: open 'AppData\Local\npm-cache\_cacache\tmp\...'` | `npm install --cache <工作区内目录>` |
+| npm 默认缓存目录 | `EPERM: open '%LOCALAPPDATA%\npm-cache\_cacache\tmp\...'` | `npm install --cache <工作区内目录>` |
 | registry 直连 | `基础连接已经关闭` / `schannel: AcquireCredentialsHandle failed` | 用 `registry.npmmirror.com`（`.npmrc` 已配） |
 | 管道喂请求做 e2e | 异步工具（`ask`）的响应**永远收不到** | stdin 一关，在途请求随进程退出；必须用握有管道的客户端（`harness.mjs`）。另外 `Start-Process -RedirectStandardOutput` 是块缓冲，强杀进程会丢缓冲 → 输出 0 字节，**不能**用它验证 |
 | PS 5.1 `Set-Content -Encoding UTF8` | 写出 **BOM**，`JSON.parse` 直接报错 | 用 `[IO.File]::WriteAllText` + `UTF8Encoding($false)`，或 `-Encoding ASCII` |
