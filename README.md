@@ -76,9 +76,33 @@ Claude Code：→ 调用 cn-models-mcp 的 ask 工具 → ¥0.0015
 }
 ```
 
+<details>
+<summary>装不上 npm？用 git 直装（不需要 npm 账号，走 github.com）</summary>
+
+把 `args` 里的包名换成 git 地址即可：
+
+```json
+{
+  "mcpServers": {
+    "cn-models": {
+      "command": "npx",
+      "args": ["-y", "github:xiexingye/cn-models-mcp"],
+      "env": { "DEEPSEEK_API_KEY": "sk-你的密钥" }
+    }
+  }
+}
+```
+
+或全局安装：`npm i -g github:xiexingye/cn-models-mcp`
+
+**为什么这条能救命**：它走 `github.com` 与 `codeload`，**完全不经过 npm registry 与 npmjs.com**。已实测：`npm install <git 仓库>` 能正确装出包并注册 `bin`。
+
+</details>
+
 **Cursor** —— `~/.cursor/mcp.json`，结构同上。
 
 **Cline / VS Code** —— 在 MCP 设置面板粘贴同一段 JSON。
+
 
 > 💡 不想把密钥写进配置文件？写 `~/.cn-models-mcp.json` 就行（只放密钥，不带其他字段），配置文件里的 `env` 可以整个省掉：
 >

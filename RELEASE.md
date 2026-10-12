@@ -42,7 +42,43 @@ node src/doctor.mjs
 
 ---
 
-## ⚠️ 待你处理 2：发布到 npm（走 CI，推荐）
+## ⚠️ 待你处理 2：发布到 npm（当前被网络阻塞）
+
+### 现状诊断（2026-10-12 实测）
+
+| 端点 | 结果 | 影响 |
+| --- | --- | --- |
+| `registry.npmjs.org`（发布 API） | ✅ HTTP 200 | `npm publish` 本身可用 |
+| `registry.npmjs.org/-/whoami` | ✅ 401（预期） | 鉴权链路正常 |
+| **`www.npmjs.com`（网站）** | ❌ **HTTP 403** | **无法注册账号、无法生成 token** |
+
+**结论**：被卡的只有"必须走网站"的两个动作（注册、生成 token）。已尝试换节点 / 全局模式 / 手机热点均无效，属 IP/指纹级 WAF 拦截。
+
+### 三条可行出路
+
+**出路 A：换个网络一次性拿 token（推荐）**
+
+只需**一次**在别的网络环境完成注册 + 生成 token（token 只显示一次，务必复制保存）。之后：
+
+> **发布可以完全交给 GitHub Actions** —— CI 跑在 GitHub 的机器上，出口 IP 与你无关，所以本地网络再差也不影响发布。
+
+**出路 B：用 git 直装（已实测可行，无需 npm 账号）**
+
+```bash
+npx -y github:xiexingye/cn-models-mcp
+# 或
+npm i -g github:xiexingye/cn-models-mcp
+```
+
+走 `github.com` + `codeload`，**不经过 npm registry 与 npmjs.com**。已实测 `npm install <git 仓库>` 能正确装出包并注册 `bin`。README 已作为备选安装方式写入。
+
+> 代价：用户装到的是仓库当前状态而非发布版本，也没有 provenance 徽章。适合先让项目跑起来。
+
+**出路 C：等网络环境变化**
+
+npm 的 WAF 放行策略会变（换时间段、换出口 IP 段都可能突然通），过几天再试一次注册页。
+
+### 账号到手后的发布流程
 
 **两条路，推荐第一条。**
 
