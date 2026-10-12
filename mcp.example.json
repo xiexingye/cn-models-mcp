@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "cn-models": {
+      "command": "npx",
+      "args": ["-y", "cn-models-mcp"],
+      "env": {
+        "DEEPSEEK_API_KEY": "sk-你的DeepSeek密钥",
+        "MOONSHOT_API_KEY": "sk-你的Kimi密钥",
+        "ZHIPU_API_KEY": "你的智谱密钥",
+        "DASHSCOPE_API_KEY": "sk-你的百炼密钥"
+      }
+    }
+  }
+}

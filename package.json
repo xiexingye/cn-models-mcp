@@ -1,0 +1,56 @@
+{
+  "name": "cn-models-mcp",
+  "version": "0.1.0",
+  "description": "MCP server that gives Claude Code / Cursor / Cline a cheap \"second opinion\": ask DeepSeek, Kimi, GLM and Qwen — no VPN, no overseas card, paid with Alipay.",
+  "type": "module",
+  "license": "MIT",
+  "bin": {
+    "cn-models-mcp": "src/index.mjs"
+  },
+  "main": "src/index.mjs",
+  "files": [
+    "src",
+    "README.md",
+    "LICENSE",
+    "mcp.example.json",
+    ".env.example"
+  ],
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "scripts": {
+    "start": "node src/index.mjs",
+    "doctor": "node src/doctor.mjs",
+    "pricing": "node scripts/pricing-table.mjs",
+    "inspect": "npx -y @modelcontextprotocol/inspector node src/index.mjs"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "claude-code",
+    "cursor",
+    "cline",
+    "deepseek",
+    "kimi",
+    "moonshot",
+    "glm",
+    "zhipu",
+    "qwen",
+    "dashscope",
+    "llm",
+    "ai-agent",
+    "cheap"
+  ],
+  "dependencies": {
+    "@modelcontextprotocol/server": "^2.3.1",
+    "zod": "^4.6.6"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/xiexingye/cn-models-mcp.git"
+  },
+  "bugs": {
+    "url": "https://github.com/xiexingye/cn-models-mcp/issues"
+  },
+  "homepage": "https://github.com/xiexingye/cn-models-mcp#readme"
+}

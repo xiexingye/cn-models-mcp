@@ -1,0 +1,11 @@
+node_modules/
+.npm-cache/
+.env
+
+# 测试与渲染产物（由脚本生成，不入库）
+_selftest/*.jsonl
+_selftest/*.txt
+_selftest/demo-frames.json
+_selftest/checks/
+
+*.log

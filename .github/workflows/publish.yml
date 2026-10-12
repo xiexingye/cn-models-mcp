@@ -1,0 +1,65 @@
+name: Publish
+
+on:
+  release:
+    types: [published]
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: '只做打包预演，不真正发布'
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+  id-token: write   # Trusted Publishing (OIDC) 必需
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+
+      # Trusted Publishing 需要 npm >= 11.5.1；Node 24 自带 11.x，这里对齐到 12
+      - name: 升级 npm（Trusted Publishing 要求 >= 11.5.1）
+        run: npm install -g npm@^12
+
+      # 仓库里没有 .npmrc（避免误用镜像 registry），这里显式写一份官方 registry
+      - name: 写入官方 registry 配置
+        run: |
+          echo "registry=https://registry.npmjs.org/" > .npmrc
+          echo "//registry.npmjs.org/:_authToken=\${NODE_AUTH_TOKEN}" >> .npmrc
+
+      - name: 安装依赖
+        run: npm ci
+
+      - name: 打包预演（检查将要发布的内容）
+        run: npm pack --dry-run
+
+      - name: 校验 tag 与 package.json 版本一致
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          PKG_VERSION=$(node -p "require('./package.json').version")
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          echo "package.json=$PKG_VERSION  tag=$TAG_VERSION"
+          if [ "$PKG_VERSION" != "$TAG_VERSION" ]; then
+            echo "::error::tag 与 package.json 版本不一致，拒绝发布"
+            exit 1
+          fi
+
+      - name: 发布到 npm
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.dry_run == false }}
+        run: npm publish --access public --provenance
+        env:
+          # 首次发布（npm 上还没有这个包）时用 token；
+          # 在 npmjs.com 绑定 Trusted Publisher 之后，npm 会优先走 OIDC，
+          # 这个 secret 即使还在也不会被使用，届时可安全删除。
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
