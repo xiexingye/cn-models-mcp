@@ -40,56 +40,98 @@ function getToken() {
 const token = getToken();
 console.log(`凭证已获取（长度 ${token.length}，不显示内容）`);
 
-async function api(method, path, body) {
-  const res = await fetch(`${API}${path}`, {
-    method,
-    headers: {
-      authorization: `Bearer ${token}`,
-      accept: 'application/vnd.github+json',
-      'user-agent': 'cn-models-mcp-push',
-      'x-github-api-version': '2022-11-28',
-      ...(body ? { 'content-type': 'application/json' } : {}),
-    },
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  const text = await res.text();
-  let json = null;
-  try { json = text ? JSON.parse(text) : null; } catch { /* 非 JSON */ }
-  if (!res.ok) {
-    const msg = json?.message ?? text.slice(0, 300);
-    const err = new Error(`${method} ${path} -> HTTP ${res.status}: ${msg}`);
-    err.status = res.status;
-    err.json = json;
-    throw err;
+async function api(method, path, body, { retries = 4 } = {}) {
+  let lastErr;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const res = await fetch(`${API}${path}`, {
+        method,
+        headers: {
+          authorization: `Bearer ${token}`,
+          accept: 'application/vnd.github+json',
+          'user-agent': 'cn-models-mcp-push',
+          'x-github-api-version': '2022-11-28',
+          ...(body ? { 'content-type': 'application/json' } : {}),
+        },
+        body: body ? JSON.stringify(body) : undefined,
+      });
+      const text = await res.text();
+      let json = null;
+      try { json = text ? JSON.parse(text) : null; } catch { /* 非 JSON */ }
+
+      // 5xx 是暂时性故障（实测遇到过内容为空的 HTTP 500），退避后重试
+      if (res.status >= 500 && attempt < retries) {
+        lastErr = new Error(`${method} ${path} -> HTTP ${res.status}: ${json?.message ?? text.slice(0, 200) ?? '(空响应)'}`);
+        const wait = 800 * 2 ** attempt;
+        console.error(`  [重试 ${attempt + 1}/${retries}] ${method} ${path} HTTP ${res.status}，${wait}ms 后重试`);
+        await new Promise((r) => setTimeout(r, wait));
+        continue;
+      }
+
+      if (!res.ok) {
+        const msg = json?.message ?? text.slice(0, 300) ?? '(空响应体)';
+        const err = new Error(`${method} ${path} -> HTTP ${res.status}: ${msg}`);
+        err.status = res.status;
+        err.json = json;
+        throw err;
+      }
+      return json;
+    } catch (err) {
+      if (err.status) throw err;            // 已带状态码的 API 错误，不再重试
+      lastErr = err;                        // 网络层错误 → 退避重试
+      if (attempt < retries) {
+        const wait = 800 * 2 ** attempt;
+        console.error(`  [重试 ${attempt + 1}/${retries}] ${method} ${path} 网络错误，${wait}ms 后重试`);
+        await new Promise((r) => setTimeout(r, wait));
+        continue;
+      }
+      throw err;
+    }
   }
-  return json;
+  throw lastErr;
 }
 
-const created = { blobs: 0, trees: 0 };
+const created = { blobs: 0, trees: 0, reused: 0 };
 
-/** 把本地某个 tree 对象递归上传，返回 GitHub 上的 tree sha */
+/** 该 tree 是否已存在于远端（幂等推送的关键：本地与远端 sha 不同，不能按提交 sha 判断） */
+async function remoteTreeExists(sha) {
+  try {
+    await api('GET', `/repos/${REPO}/git/trees/${sha}`);
+    return true;
+  } catch (err) {
+    if (err.status === 404) return false;
+    throw err;
+  }
+}
+
+/** 把本地某个 tree 对象递归上传，返回 GitHub 上的 tree sha（已存在则直接复用） */
 async function pushTree(localSha, label = '') {
   const raw = git('cat-file', '-p', localSha);
   const lines = raw.split('\n').filter(Boolean);
   const entries = [];
 
+  // 子树先递归（已存在的直接复用，避免重复上传整棵树）
+  const subTrees = [];
+  const blobs = [];
   for (const line of lines) {
-    // git cat-file -p <tree> 每行格式: <mode> <type> <sha>\t<name>
     const m = line.match(/^(\d+)\s+(\w+)\s+([0-9a-f]{40})\t(.*)$/);
     if (!m) throw new Error(`无法解析 tree 行: ${line}`);
     const [, mode, type, sha, name] = m;
+    if (type === 'tree') subTrees.push({ mode, sha, name });
+    else if (type === 'blob') blobs.push({ mode, sha, name });
+    else throw new Error(`不支持的 tree 条目类型: ${type}（${name}）`);
+  }
 
-    if (type === 'tree') {
-      const childSha = await pushTree(sha, `${label}${name}/`);
-      entries.push({ path: name, mode, type: 'tree', sha: childSha });
-    } else if (type === 'blob') {
-      const content = gitRaw('cat-file', 'blob', sha).toString('base64');
-      const blob = await api('POST', `/repos/${REPO}/git/blobs`, { content, encoding: 'base64' });
-      created.blobs += 1;
-      entries.push({ path: name, mode, type: 'blob', sha: blob.sha });
-    } else {
-      throw new Error(`不支持的 tree 条目类型: ${type}（${name}）`);
-    }
+  for (const t of subTrees) {
+    const childSha = await pushTree(t.sha, `${label}${t.name}/`);
+    entries.push({ path: t.name, mode: t.mode, type: 'tree', sha: childSha });
+  }
+
+  for (const b of blobs) {
+    const content = gitRaw('cat-file', 'blob', b.sha).toString('base64');
+    const blob = await api('POST', `/repos/${REPO}/git/blobs`, { content, encoding: 'base64' });
+    created.blobs += 1;
+    entries.push({ path: b.name, mode: b.mode, type: 'blob', sha: blob.sha });
   }
 
   const tree = await api('POST', `/repos/${REPO}/git/trees`, { tree: entries });
@@ -140,26 +182,45 @@ async function main() {
   const commits = git('rev-list', '--reverse', 'HEAD').split('\n').filter(Boolean);
   console.log(`本地提交数: ${commits.length}`);
 
+  // 远端提交的 tree -> commit sha 映射。
+  // 注意：不能按提交 sha 判断"是否已推送" —— 我们是用 API 重建的提交，sha 与本地不同；
+  // 但 tree 内容相同则 sha 相同，所以用 tree 做标识（这也让重复运行变得幂等）。
   const existing = new Set();
+  const remoteByTree = new Map();
   if (remoteHasCommits) {
     const remoteCommits = await api('GET', `/repos/${REPO}/commits?per_page=100`);
-    remoteCommits.forEach((c) => existing.add(c.sha));
+    remoteCommits.forEach((c) => {
+      existing.add(c.sha);
+      remoteByTree.set(c.commit.tree.sha, c.sha);
+    });
     console.log(`远端已有提交: ${remoteCommits.length}`);
+  }
+
+  // 已存在的 tree 直接复用，避免重复上传整棵树
+  async function ensureTree(localTreeSha, label) {
+    if (await remoteTreeExists(localTreeSha)) {
+      created.reused += 1;
+      console.log(`  tree ${label || '(root)'} 已存在，复用 ${localTreeSha.slice(0, 8)}`);
+      return localTreeSha;
+    }
+    return pushTree(localTreeSha, label);
   }
 
   let lastSha = seedCommitSha;   // 第一个本地提交的父提交
   for (const sha of commits) {
-    if (existing.has(sha)) {
-      console.log(`  已存在，跳过 ${sha.slice(0, 8)}`);
-      lastSha = sha;
-      continue;
-    }
     const meta = git('cat-file', 'commit', sha);
     const treeLine = meta.split('\n').find((l) => l.startsWith('tree '));
-    const parentLine = meta.split('\n').find((l) => l.startsWith('parent '));
     const authorLine = meta.split('\n').find((l) => l.startsWith('author '));
     const committerLine = meta.split('\n').find((l) => l.startsWith('committer '));
     const message = meta.slice(meta.indexOf('\n\n') + 2);
+    const localTreeSha = treeLine.split(' ')[1];
+
+    // 这个提交的内容已经在远端 → 视为已推送，把它当作后续提交的父提交
+    if (remoteByTree.has(localTreeSha)) {
+      lastSha = remoteByTree.get(localTreeSha);
+      console.log(`  已推送过，跳过 ${sha.slice(0, 8)}（远端 ${lastSha.slice(0, 8)}）`);
+      continue;
+    }
 
     const parsePerson = (line) => {
       // author 名字 <邮箱> 时间戳 时区
@@ -169,9 +230,8 @@ async function main() {
       return { name, email, date: new Date(Number(date) * 1000).toISOString() };
     };
 
-    const localTreeSha = treeLine.split(' ')[1];
     console.log(`\n推送提交 ${sha.slice(0, 8)} — ${message.split('\n')[0]}`);
-    const ghTreeSha = await pushTree(localTreeSha);
+    const ghTreeSha = await ensureTree(localTreeSha);
 
     const commitBody = {
       message,
