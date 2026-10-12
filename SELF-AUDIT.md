@@ -44,8 +44,8 @@ README 里的快速开始用的是 `npx -y cn-models-mcp`，发布到 npm 后即
 | --- | --- | --- |
 | **README 效果展示（GIF）** | ✅ **已完成** | `docs/demo.gif`（900×560，36 帧，11.8 秒，255 KB）已放进 README 首屏。内容是**真实调用的回放**：打字机输入 → MCP 工具调用 → 真实计费行 `58↓ 365↑ · ¥0.0015 · 3183ms` → 三行回答 → Claude 判断结论正确。数字全部来自厂商返回的真实 usage |
 | 10 秒可验证 | ✅ | GIF 第一屏就能看懂"问一句 → 花 0.0015 元 → 拿到答案"，且**有真实数字** |
-| **npm 上架** | ⏸ **已暂缓** | `www.npmjs.com` 对本机出口 IP 返回 403（WAF 拦截），无法注册账号/生成 token。已实测 `registry.npmjs.org` 正常（200/401），所以发布通道本身没问题。**改用 `npx -y github:xiexingye/cn-models-mcp` 作为安装方式**（不经过 npm，已实测可用） |
-| 一行安装 | ✅ | `npx -y github:xiexingye/cn-models-mcp`（上架后换成包名） |
+| **npm 上架** | ✅ **已完成** | `cn-models-mcp@0.1.0` 已于 2026-10-12 发布（`npm publish` 返回 202，注册表 `dist-tags.latest=0.1.0`）。当时 `www.npmjs.com` 对本机出口 IP 的 403 属当时的网络环境问题，换环境后注册与生成 token 均正常 |
+| 一行安装 | ✅ | `npx -y cn-models-mcp`（已上架，无需 clone、无需 npm 账号） |
 | **兼容性边界写清** | ✅ | 已补 11 个客户端的矩阵 + Windsurf/Zed 字段差异 + DSH 需桥接插件（避免"装了没反应"的差评） |
 | 定位清晰 | ✅ | 开篇第一句就说明"不用海外卡/VPN"+"第二意见" |
 | 真实数据不吹 | ✅ | 价格表由脚本从注册表生成，核对日期写明；智谱价格已实测对账；GIF 数字来自真实调用 |

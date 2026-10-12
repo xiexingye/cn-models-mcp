@@ -3,6 +3,8 @@
 > 让你的 Claude Code / Cursor / Cline 多一个「便宜的第二意见」—— 一句话调用 DeepSeek、Kimi、GLM、通义千问。
 > 支付宝充值即可，**不需要海外信用卡，不需要 VPN**。
 
+[![npm version](https://img.shields.io/npm/v/cn-models-mcp?color=cb3837&logo=npm&logoColor=white)](https://www.npmjs.com/package/cn-models-mcp)
+[![npm downloads](https://img.shields.io/npm/dm/cn-models-mcp?color=cb3837)](https://www.npmjs.com/package/cn-models-mcp)
 [![MCP](https://img.shields.io/badge/MCP-2025--11--25-blue)](https://modelcontextprotocol.io)
 [![Publish](https://github.com/xiexingye/cn-models-mcp/actions/workflows/publish.yml/badge.svg)](https://github.com/xiexingye/cn-models-mcp/actions/workflows/publish.yml)
 [![Node](https://img.shields.io/badge/node-%3E%3D24-brightgreen)](https://nodejs.org)
@@ -51,7 +53,8 @@ Claude Code：→ 调用 cn-models-mcp 的 ask 工具 → ¥0.0015
 
 ## 快速开始（两分钟）
 
-> ⚠️ **尚未上架 npm**，所以下面用 `github:` 直装（走 `github.com`，不需要 npm 账号）。等上架后把包名换回来即可。
+> ✅ **已发布到 npm**：[`cn-models-mcp`](https://www.npmjs.com/package/cn-models-mcp)（当前 **0.1.0**）。
+> 下面用 `npx` 直接跑，**不用 clone，也不用 npm 账号**。
 
 ### 1. 拿一个密钥（任选一家，都支持支付宝）
 
@@ -71,23 +74,20 @@ Claude Code：→ 调用 cn-models-mcp 的 ask 工具 → ¥0.0015
   "mcpServers": {
     "cn-models": {
       "command": "npx",
-      "args": ["-y", "github:xiexingye/cn-models-mcp"],
+      "args": ["-y", "cn-models-mcp"],
       "env": { "DEEPSEEK_API_KEY": "sk-你的密钥" }
     }
   }
 }
 ```
 
-> 📌 **为什么用 `github:` 而不是包名**：本项目**尚未发布到 npm**（发布链路被网络阻塞，见 [RELEASE.md](RELEASE.md)）。
-> `github:` 装法走 `github.com` + `codeload`，**不经过 npm registry**，现在就能用。
-> 已实测：`npm install <git 仓库>` 能正确装出包并注册 `bin`。
->
-> 等 npm 上架后，把 `args` 换成 `["-y", "cn-models-mcp"]` 即可，其余不变。
+> 📌 **装的是哪个版本**：`npx -y cn-models-mcp` 默认拉最新发布版（当前 **0.1.0**）。
+> 想锁死版本就写 `cn-models-mcp@0.1.0`；想直接跟仓库最新代码，可用 `github:xiexingye/cn-models-mcp`（走 `github.com`，不经过 npm registry）。
 
 也可以全局安装：
 
 ```bash
-npm i -g github:xiexingye/cn-models-mcp
+npm i -g cn-models-mcp
 ```
 
 **Cursor** —— `~/.cursor/mcp.json`，结构同上。
@@ -123,13 +123,14 @@ npm i -g github:xiexingye/cn-models-mcp
 
 > **「调用 check_setup 看看配置好了没」**
 
-它会逐个厂商报告密钥状态（**密钥只显示前 6 位**）并告诉你下一步。也可以在终端直接跑：
+它会逐个厂商报告密钥状态（**密钥只显示前 6 位**）并告诉你下一步。想在终端先自己看一眼，直接跑：
 
 ```bash
-node src/doctor.mjs
+npx -y cn-models-mcp        # 已发布的包：以 stdio 起服务，看到「可用模型」就说明密钥读到了
+node src/doctor.mjs         # 源码方式：只做体检，不起服务
 ```
 
-> ⚠️ 需要 **Node ≥ 20**（MCP SDK v2 要求）。本仓库的源码直接可跑，无需编译。
+> ⚠️ 需要 **Node ≥ 24**（见 `package.json` 的 `engines` 字段）。包是纯 ESM 源码，装完即可运行，无需编译。
 
 ## 兼容性：哪些客户端能装
 
@@ -171,7 +172,7 @@ node src/doctor.mjs
 {
   "context_servers": {
     "cn-models": {
-      "command": { "path": "npx", "args": ["-y", "github:xiexingye/cn-models-mcp"] },
+      "command": { "path": "npx", "args": ["-y", "cn-models-mcp"] },
       "settings": { "DEEPSEEK_API_KEY": "sk-..." }
     }
   }
@@ -340,6 +341,7 @@ DEEPSEEK_API_KEY=sk-xxx node _selftest/harness.mjs
 
 ## 路线图
 
+- [x] **发布到 npm**（`cn-models-mcp@0.1.0`）—— `npx -y cn-models-mcp` 直接可用
 - [x] **Streamable HTTP 传输**（`--http`）—— 已支持，覆盖 ChatGPT 开发者模式与云端宿主
 - [ ] 支持流式输出到客户端（当前为一次性返回）
 - [ ] `web_search` 工具（Kimi / 智谱都有联网接口）

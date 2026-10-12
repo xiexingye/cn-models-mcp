@@ -42,7 +42,10 @@ node src/doctor.mjs
 
 ---
 
-## ⚠️ 待你处理 2：发布到 npm（当前被网络阻塞）
+## ✅ 已完成：发布到 npm（`cn-models-mcp@0.1.0` 已上线）
+
+> **状态更新（2026-10-12）**：已用 granular token 在本地发布成功 —— `npm publish --access public` 返回 **202 Accepted**，约 1 分钟后 `dist-tags.latest = 0.1.0`；`npm install cn-models-mcp@0.1.0` 端到端实测通过（10 个文件，sha1 与本地打包一致）。
+> 下面保留的是**当初被 403 挡住时**的诊断与预案，作为历史记录；其中「出路 B（git 直装）」至今仍是有效的备选安装方式。
 
 ### 现状诊断（2026-10-12 实测）
 
