@@ -9,3 +9,6 @@ _selftest/demo-frames.json
 _selftest/checks/
 
 *.log
+# Python 缓存
+__pycache__/
+*.pyc
